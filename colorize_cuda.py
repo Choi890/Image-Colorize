@@ -77,7 +77,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def list_input_images(input_path: Path) -> List[Path]:
-    # Accept either a single image or a directory tree so batch runs share one CLI path.
+    # 입력은 단일 이미지 또는 폴더가 될 수 있다.
+    # 폴더일 때는 하위 경로까지 훑어 지원 확장자만 모아 배치 색상화 대상으로 만든다.
     if input_path.is_file():
         if input_path.suffix.lower() not in VALID_EXTS:
             raise ValueError(f"Unsupported image extension: {input_path.suffix}")
@@ -108,7 +109,8 @@ def normalize_to_uint8(img: np.ndarray) -> np.ndarray:
 
 
 def load_image(image_path: Path) -> Tuple[np.ndarray, Optional[np.ndarray]]:
-    # Normalize every supported source into BGR plus optional alpha before model inference.
+    # OpenCV는 이미지 채널 형태가 파일마다 다르게 들어올 수 있다.
+    # 여기서 모든 입력을 모델이 처리하기 쉬운 BGR 이미지와 선택적 alpha 채널로 정규화한다.
     img = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
     if img is None:
         raise ValueError(f"Failed to decode image: {image_path}")
@@ -160,7 +162,8 @@ def run_model(colorizer, bgr: np.ndarray) -> np.ndarray:
 
 
 def colorize_with_tta(colorizer, bgr: np.ndarray, use_tta: bool) -> np.ndarray:
-    # Horizontal flip TTA blends two predictions to reduce one-sided color artifacts.
+    # TTA가 켜져 있으면 원본 예측과 좌우 반전 예측을 섞는다.
+    # 한쪽 방향에만 생기는 색 번짐을 줄이고, 오래된 흑백 사진에서 더 안정적인 색을 얻기 위한 처리다.
     base = run_model(colorizer, bgr)
     if not use_tta:
         return base
@@ -260,7 +263,8 @@ def build_colorizer(model_id: str, gpu_idx: int):
 
 def main() -> None:
     args = parse_args()
-    # Validate user-facing knobs before touching CUDA so failures are quick and explicit.
+    # CUDA 모델을 로드하기 전에 사용자 옵션을 먼저 검증한다.
+    # 잘못된 값은 GPU 초기화 이후가 아니라 즉시 에러를 내서 원인을 빠르게 알 수 있게 한다.
     if not 0.0 <= args.luma_strength <= 1.0:
         raise ValueError(f"--luma-strength must be in [0, 1], got {args.luma_strength}")
     if args.chroma_boost <= 0:
