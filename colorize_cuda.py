@@ -77,6 +77,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def list_input_images(input_path: Path) -> List[Path]:
+    # Accept either a single image or a directory tree so batch runs share one CLI path.
     if input_path.is_file():
         if input_path.suffix.lower() not in VALID_EXTS:
             raise ValueError(f"Unsupported image extension: {input_path.suffix}")
@@ -107,6 +108,7 @@ def normalize_to_uint8(img: np.ndarray) -> np.ndarray:
 
 
 def load_image(image_path: Path) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+    # Normalize every supported source into BGR plus optional alpha before model inference.
     img = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
     if img is None:
         raise ValueError(f"Failed to decode image: {image_path}")
@@ -158,6 +160,7 @@ def run_model(colorizer, bgr: np.ndarray) -> np.ndarray:
 
 
 def colorize_with_tta(colorizer, bgr: np.ndarray, use_tta: bool) -> np.ndarray:
+    # Horizontal flip TTA blends two predictions to reduce one-sided color artifacts.
     base = run_model(colorizer, bgr)
     if not use_tta:
         return base
@@ -257,6 +260,7 @@ def build_colorizer(model_id: str, gpu_idx: int):
 
 def main() -> None:
     args = parse_args()
+    # Validate user-facing knobs before touching CUDA so failures are quick and explicit.
     if not 0.0 <= args.luma_strength <= 1.0:
         raise ValueError(f"--luma-strength must be in [0, 1], got {args.luma_strength}")
     if args.chroma_boost <= 0:
