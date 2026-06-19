@@ -1,4 +1,4 @@
-﻿# NVIDIA GPU Image Colorization
+﻿# Image Colorization
 
 `DDColor`(ModelScope)를 사용해 흑백/저채도 이미지를 고품질로 컬러라이징합니다.
 
